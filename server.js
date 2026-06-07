@@ -1,23 +1,29 @@
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
-require("dotenv").config();
+
+// Intentar cargar dotenv solo si existe localmente (evita que explote en Render)
+try {
+  require("dotenv").config();
+} catch (e) {
+  console.log("Variables de entorno cargadas desde el proveedor de Hosting");
+}
 
 const app = express();
 
 // =========================
-// 🔓 MIDDLEWARES
+// 🔓 CONFIGURACIÓN DE CORS
 // =========================
-// Permitimos que tu Front en Netlify y tu desarrollo local se conecten al Back
+// Permitimos explícitamente el acceso a tu sitio de Netlify y a tus pruebas locales
 const allowedOrigins = [
-  "http://localhost:5500", // Por si probás con Live Server local
-  "http://127.0.0.1:5500",
-  "https://tu-app-de-netlify.netlify.app" // 👈 REEMPLAZÁ ESTO con la URL real de tu Netlify
+  "https://ingresospnet.netlify.app", 
+  "http://localhost:5500",
+  "http://127.0.0.1:5500"
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Permitir peticiones sin origen (como herramientas de Postman o el mismo backend)
+    // Permitir peticiones sin origen (como Postman o el propio servidor)
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) === -1) {
       const msg = 'El control CORS de esta API no permite acceso desde el origen especificado.';
@@ -32,7 +38,14 @@ app.use(express.json());
 // =========================
 // 🔗 CONEXIÓN MONGO
 // =========================
-mongoose.connect(process.env.MONGO_URI)
+const MONGO_URI = process.env.MONGO_URI;
+
+if (!MONGO_URI) {
+  console.error("🔴 ERROR CRÍTICO: La variable MONGO_URI no está definida.");
+  process.exit(1);
+}
+
+mongoose.connect(MONGO_URI)
   .then(() => console.log("🟢 Mongo conectado correctamente"))
   .catch(err => console.log("🔴 Error Mongo:", err));
 
@@ -54,12 +67,22 @@ const Ingreso = mongoose.model("Ingreso", ingresoSchema);
 // 🚀 RUTAS API
 // =========================
 
-// Ruta base de cortesía para verificar que el backend esté vivo en la nube
+// Ruta raíz para verificar estado
 app.get("/", (req, res) => {
-  res.send("🚀 API de Ingresos PNET corriendo perfectamente.");
+  res.send("🚀 API de Ingresos PNET corriendo perfectamente en la nube.");
 });
 
-// ✅ CREAR
+// ✅ OBTENER TODOS (GET)
+app.get("/ingresos", async (req, res) => {
+  try {
+    const datos = await Ingreso.find().sort({ createdAt: -1 });
+    res.json(datos);
+  } catch (error) {
+    res.status(500).json({ error: "Error al obtener datos" });
+  }
+});
+
+// ✅ CREAR (POST)
 app.post("/ingresos", async (req, res) => {
   try {
     const nuevo = new Ingreso(req.body);
@@ -70,17 +93,7 @@ app.post("/ingresos", async (req, res) => {
   }
 });
 
-// ✅ OBTENER TODOS
-app.get("/ingresos", async (req, res) => {
-  try {
-    const datos = await Ingreso.find().sort({ createdAt: -1 });
-    res.json(datos);
-  } catch (error) {
-    res.status(500).json({ error: "Error al obtener datos" });
-  }
-});
-
-// ✅ ELIMINAR
+// ✅ ELIMINAR (DELETE)
 app.delete("/ingresos/:id", async (req, res) => {
   try {
     await Ingreso.findByIdAndDelete(req.params.id);
@@ -108,7 +121,6 @@ app.put("/ingresos/:id", async (req, res) => {
 // 🚀 SERVIDOR
 // =========================
 const PORT = process.env.PORT || 3000;
-
 app.listen(PORT, () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
 });
