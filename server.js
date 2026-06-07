@@ -5,16 +5,40 @@ require("dotenv").config();
 
 const app = express();
 
-// 🔓 middlewares
-app.use(cors());
+// =========================
+// 🔓 MIDDLEWARES
+// =========================
+// Permitimos que tu Front en Netlify y tu desarrollo local se conecten al Back
+const allowedOrigins = [
+  "http://localhost:5500", // Por si probás con Live Server local
+  "http://127.0.0.1:5500",
+  "https://tu-app-de-netlify.netlify.app" // 👈 REEMPLAZÁ ESTO con la URL real de tu Netlify
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Permitir peticiones sin origen (como herramientas de Postman o el mismo backend)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'El control CORS de esta API no permite acceso desde el origen especificado.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  }
+}));
+
 app.use(express.json());
 
-// 🔗 conexión Mongo
+// =========================
+// 🔗 CONEXIÓN MONGO
+// =========================
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log("🟢 Mongo conectado"))
+  .then(() => console.log("🟢 Mongo conectado correctamente"))
   .catch(err => console.log("🔴 Error Mongo:", err));
 
-// 📦 modelo
+// =========================
+// 📦 MODELO
+// =========================
 const ingresoSchema = new mongoose.Schema({
   usuario: String,
   fecha: String,
@@ -26,10 +50,14 @@ const ingresoSchema = new mongoose.Schema({
 
 const Ingreso = mongoose.model("Ingreso", ingresoSchema);
 
+// =========================
+// 🚀 RUTAS API
+// =========================
 
-// =========================
-// 🚀 RUTAS
-// =========================
+// Ruta base de cortesía para verificar que el backend esté vivo en la nube
+app.get("/", (req, res) => {
+  res.send("🚀 API de Ingresos PNET corriendo perfectamente.");
+});
 
 // ✅ CREAR
 app.post("/ingresos", async (req, res) => {
@@ -62,7 +90,7 @@ app.delete("/ingresos/:id", async (req, res) => {
   }
 });
 
-// ✅ EDITAR
+// ✅ EDITAR (PUT)
 app.put("/ingresos/:id", async (req, res) => {
   try {
     const actualizado = await Ingreso.findByIdAndUpdate(
@@ -76,9 +104,9 @@ app.put("/ingresos/:id", async (req, res) => {
   }
 });
 
-
 // =========================
-
+// 🚀 SERVIDOR
+// =========================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
