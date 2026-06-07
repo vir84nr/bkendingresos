@@ -14,10 +14,6 @@ const app = express();
 // =========================
 // 🔓 CONFIGURACIÓN DE CORS
 // =========================
-// Permitimos explícitamente el acceso a tu sitio de Netlify y a tus pruebas locales
-// =========================
-// 🔓 CONFIGURACIÓN DE CORS
-// =========================
 const allowedOrigins = [
   "https://ingresospnet.netlify.app",
   "http://localhost:5500",
@@ -26,22 +22,18 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    // 1. Permitir peticiones sin origen (como Postman, extensiones o el propio servidor)
     if (!origin) return callback(null, true);
     
-    // 2. Limpiar el origen recibido (quitar barra final si existe y pasar a minúsculas)
     let cleanOrigin = origin.toLowerCase().trim();
     if (cleanOrigin.endsWith('/')) {
       cleanOrigin = cleanOrigin.slice(0, -1);
     }
 
-    // 3. Limpiar los orígenes permitidos para comparar de forma idéntica
     const cleanAllowed = allowedOrigins.map(url => {
       let u = url.toLowerCase().trim();
       return u.endsWith('/') ? u.slice(0, -1) : u;
     });
 
-    // 4. Validar si el origen está permitido
     if (cleanAllowed.includes(cleanOrigin)) {
       return callback(null, true);
     } else {
@@ -49,10 +41,15 @@ app.use(cors({
       return callback(new Error(msg), false);
     }
   },
-  credentials: true, // Permite cookies/cabeceras si el navegador lo requiere
+  credentials: true,
   methods: "GET,POST,PUT,DELETE,OPTIONS",
   allowedHeaders: "Content-Type,Authorization"
 }));
+
+// ========================================================
+// 📦 MIDDLEWARE DE LECTURA DE JSON (¡ESTA LÍNEA FALTABA!)
+// ========================================================
+app.use(express.json());
 
 // =========================
 // 🔗 CONEXIÓN MONGO
